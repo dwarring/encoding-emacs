@@ -1,0 +1,15 @@
+# Raku precompilation
+.precomp/
+lib/.precomp/
+
+# Development scripts
+dev-bin/
+
+# Test generated files
+lib/Encoding/Emacs/Generated/
+lib/Encoding/Emacs/TestGen/
+lib/Encoding/Emacs/TestPhase3/
+
+# Temporary test files
+test-*.raku
+sdist/

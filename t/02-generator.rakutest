@@ -1,0 +1,31 @@
+use v6.d;
+use Test;
+use lib 'lib';
+use Encoding::Emacs::Parser;
+use Encoding::Emacs::Generator;
+
+plan 5;
+
+# Test 1: Class name normalization
+{
+    is normalize-name('iso-8859-1'), 'Iso_8859_1', "Kebab to PascalCase with underscores";
+    is normalize-name('windows-1252'), 'Windows_1252', "Windows charset normalized";
+    is normalize-name('utf-8'), 'Utf_8', "UTF-8 normalized";
+}
+
+# Test 2: Code generation produces valid syntax
+{
+    my $charset = CharsetDef.new(
+        name => 'test-charset',
+        alias => 'test-alias',
+        description => 'Test Description',
+        properties => { 'map' => 'test.map', 'ascii-compatible-p' => 't' },
+        type => 'charset'
+    );
+    
+    my $code = generate-encoding-class($charset);
+    ok $code ~~ /class \s+ Encoding\:\:Emacs\:\:Test_Charset/, "Generated class has correct name";
+    ok $code ~~ /'test-charset'/, "Generated class has charset name";
+}
+
+done-testing;

@@ -1,0 +1,42 @@
+use v6.d;
+use Test;
+use lib 'lib';
+use Encoding::Emacs::Parser;
+
+plan 7;
+
+# Test 1: Basic charset parsing
+{
+    my $sample = q:to/END/;
+    (define-charset 'iso-8859-1 "Latin-1" :short-name "Latin-1")
+    END
+    
+    my %result = parse-emacs-encodings($sample);
+    ok %result, "Parse succeeded";
+    is %result<charsets>.elems, 1, "One charset parsed";
+    is %result<charsets>[0].name, 'iso-8859-1', "Charset name correct";
+}
+
+# Test 2: Charset with alias
+{
+    my $sample = q:to/END/;
+    (define-charset 'iso-8859-5 'cyrillic-iso8859-5 "Cyrillic")
+    END
+    
+    my %result = parse-emacs-encodings($sample);
+    is %result<charsets>[0].alias, 'cyrillic-iso8859-5', "Alias parsed";
+}
+
+# Test 3: Alias definition
+{
+    my $sample = q:to/END/;
+    (define-charset-alias 'ucs 'unicode)
+    END
+    
+    my %result = parse-emacs-encodings($sample);
+    is %result<aliases>.elems, 1, "Alias definition parsed";
+    is %result<aliases>[0].name, 'ucs', "Alias name correct";
+    is %result<aliases>[0].target, 'unicode', "Alias target correct";
+}
+
+done-testing;

@@ -1,0 +1,51 @@
+use v6.d;
+use Test;
+use lib 'lib';
+use Encoding::Emacs::MappingTable;
+
+plan 10;
+
+# Test 1: Parse simple mapping
+{
+    my $mapping-text = q:to/END/;
+    # Test mapping
+    0x00-0x7F 0x0000
+    0xA0 0x00A0
+    0xA1-0xA3 0x0401
+    END
+    
+    my $table = MappingTable.new.parse-mapping($mapping-text);
+    ok $table, "Mapping table created";
+    is $table.decode-byte(0x00), 0x00, "Identity mapping for ASCII";
+    is $table.decode-byte(0x7F), 0x7F, "End of ASCII range";
+    is $table.decode-byte(0xA0), 0xA0, "Single byte mapping";
+    is $table.decode-byte(0xA1), 0x0401, "Range start";
+    is $table.decode-byte(0xA2), 0x0402, "Range middle";
+    is $table.decode-byte(0xA3), 0x0403, "Range end";
+}
+
+# Test 2: Load actual mapping file
+SKIP: {
+    skip "Mapping files not available", 2 unless 'emacs-src/charsets/8859-5.map'.IO.e;
+    
+    my $table = load-mapping-table('8859-5');
+    ok $table, "Loaded 8859-5 mapping";
+    
+    # Test known mapping: 0xA1 in ISO-8859-5 is U+0401 (Cyrillic capital letter IO)
+    is $table.decode-byte(0xA1), 0x0401, "Correct Cyrillic mapping";
+}
+
+# Test 3: Encode/decode string
+{
+    my $mapping-text = q:to/END/;
+    0x00-0x7F 0x0000
+    0xA0 0x0401
+    END
+    
+    my $table = MappingTable.new.parse-mapping($mapping-text);
+    
+    my $blob = Blob.new(0x48, 0x65, 0x6C, 0x6C, 0x6F); # "Hello"
+    is $table.decode-bytes($blob), "Hello", "Decode ASCII bytes";
+}
+
+done-testing;
