@@ -1,0 +1,160 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::Full::Koi8_R;
+use Encoding::Emacs::Full::Koi8_U;
+use Encoding::Emacs::Full::Koi8_T;
+use Encoding::Emacs::Full::Mac_Roman;
+use Encoding::Emacs::Full::Hp_Roman8;
+use Encoding::Emacs::Full::Mik;
+use Encoding::Emacs::Full::Alternativnyj;
+
+plan 43;
+
+# ── KOI8-R (Russian) ─────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_R.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'koi8-r', 'KOI8-R name';
+    ok $enc.is-ascii-compatible, 'KOI8-R is ASCII compatible';
+
+    # ASCII identity
+    is $dec.decode(Blob.new(0x48, 0x65, 0x6C, 0x6C, 0x6F)), 'Hello', 'KOI8-R: ASCII Hello';
+
+    # 0x80 → U+2500 (─ box drawing horizontal)
+    is $dec.decode(Blob.new(0x80)).ord, 0x2500, 'KOI8-R: 0x80 = ─';
+    # 0x81 → U+2502 (│ box drawing vertical)
+    is $dec.decode(Blob.new(0x81)).ord, 0x2502, 'KOI8-R: 0x81 = │';
+    # 0x82 → U+250C (┌)
+    is $dec.decode(Blob.new(0x82)).ord, 0x250C, 'KOI8-R: 0x82 = ┌';
+    # 0xA3 → U+0451 (ё)
+    is $dec.decode(Blob.new(0xA3)).ord, 0x0451, 'KOI8-R: 0xA3 = ё';
+    # 0xB3 → U+0401 (Ё)
+    is $dec.decode(Blob.new(0xB3)).ord, 0x0401, 'KOI8-R: 0xB3 = Ё';
+    # 0xC0 → U+044E (ю)
+    is $dec.decode(Blob.new(0xC0)).ord, 0x044E, 'KOI8-R: 0xC0 = ю';
+    # 0xC1 → U+0430 (а)
+    is $dec.decode(Blob.new(0xC1)).ord, 0x0430, 'KOI8-R: 0xC1 = а';
+    # 0xC2 → U+0431 (б)
+    is $dec.decode(Blob.new(0xC2)).ord, 0x0431, 'KOI8-R: 0xC2 = б';
+    # 0xC3 → U+0446 (ц)
+    is $dec.decode(Blob.new(0xC3)).ord, 0x0446, 'KOI8-R: 0xC3 = ц';
+    # 0xE0 → U+042E (Ю)
+    is $dec.decode(Blob.new(0xE0)).ord, 0x042E, 'KOI8-R: 0xE0 = Ю';
+    # 0xE1 → U+0410 (А)
+    is $dec.decode(Blob.new(0xE1)).ord, 0x0410, 'KOI8-R: 0xE1 = А';
+    # 0xE2 → U+0411 (Б)
+    is $dec.decode(Blob.new(0xE2)).ord, 0x0411, 'KOI8-R: 0xE2 = Б';
+    # 0xFF → U+042A (Ъ)
+    is $dec.decode(Blob.new(0xFF)).ord, 0x042A, 'KOI8-R: 0xFF = Ъ';
+
+    # Encode Cyrillic
+    my $buf = $enc2.encode("а");
+    is $buf[0], 0xC1, 'KOI8-R: а encodes to 0xC1';
+    $buf = $enc2.encode("А");
+    is $buf[0], 0xE1, 'KOI8-R: А encodes to 0xE1';
+
+    # Round-trip Russian text
+    my $text = "Привет мир";
+    is $dec.decode($enc2.encode($text)), $text, 'KOI8-R: round-trip Привет мир';
+
+    # Verify alternative names
+    ok $enc.alternative-names.grep('koi8_r'), 'KOI8-R: has alias koi8_r';
+}
+
+# ── KOI8-U (Ukrainian) ───────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_U.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'koi8-u', 'KOI8-U name';
+    ok $enc.is-ascii-compatible, 'KOI8-U is ASCII compatible';
+
+    # KOI8-U shares most of KOI8-R but has Ukrainian-specific chars
+    # 0xC0 → U+044E (ю) — same as KOI8-R
+    is $dec.decode(Blob.new(0xC0)).ord, 0x044E, 'KOI8-U: 0xC0 = ю';
+
+    # Round-trip
+    my $text = "Привіт світ";
+    is $dec.decode($enc2.encode($text)), $text, 'KOI8-U: round-trip Привіт світ';
+}
+
+# ── KOI8-T (Tajik) ───────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_T.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'koi8-t', 'KOI8-T name';
+    # ASCII identity
+    is $dec.decode(Blob.new(0x41)), 'A', 'KOI8-T: ASCII A';
+}
+
+# ── Mac Roman (Apple Macintosh) ──────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Mac_Roman.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'mac-roman', 'Mac Roman name';
+    ok $enc.is-ascii-compatible, 'Mac Roman is ASCII compatible';
+
+    # ASCII identity
+    is $dec.decode(Blob.new(0x41)), 'A', 'Mac Roman: ASCII A';
+
+    # 0x80 → U+00C4 (Ä)
+    is $dec.decode(Blob.new(0x80)).ord, 0x00C4, 'Mac Roman: 0x80 = Ä';
+    # 0x81 → U+00C5 (Å)
+    is $dec.decode(Blob.new(0x81)).ord, 0x00C5, 'Mac Roman: 0x81 = Å';
+    # 0x82 → U+00C7 (Ç)
+    is $dec.decode(Blob.new(0x82)).ord, 0x00C7, 'Mac Roman: 0x82 = Ç';
+    # 0x83 → U+00C9 (É)
+    is $dec.decode(Blob.new(0x83)).ord, 0x00C9, 'Mac Roman: 0x83 = É';
+    # 0x87 → U+00E1 (á)
+    is $dec.decode(Blob.new(0x87)).ord, 0x00E1, 'Mac Roman: 0x87 = á';
+
+    # Encode
+    my $buf = $enc2.encode("Ä");
+    is $buf[0], 0x80, 'Mac Roman: Ä encodes to 0x80';
+
+    # Round-trip
+    my $text = "Café";
+    is $dec.decode($enc2.encode($text)), $text, 'Mac Roman: round-trip Café';
+}
+
+# ── HP Roman8 ────────────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Hp_Roman8.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'hp-roman8', 'HP Roman8 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'HP Roman8: ASCII A';
+}
+
+# ── MIK (Russian alternative) ────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Mik.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'mik', 'MIK name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'MIK: ASCII A';
+
+    # Round-trip Cyrillic
+    my $text = "Привет";
+    is $dec.decode($enc2.encode($text)), $text, 'MIK: round-trip Привет';
+}
+
+# ── Alternativnyj ────────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Alternativnyj.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'alternativnyj', 'Alternativnyj name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'Alternativnyj: ASCII A';
+}
+
+done-testing;

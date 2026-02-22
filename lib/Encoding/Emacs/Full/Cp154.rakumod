@@ -1,5 +1,5 @@
 use v6.d;
-use Encoding::Emacs::Ptcp154;
+use Encoding::Emacs::Full::Pt154;
 
 # Alias: cp154 -> ptcp154
 class Encoding::Emacs::Cp154 is Encoding::Emacs::Ptcp154 {

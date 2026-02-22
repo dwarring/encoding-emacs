@@ -1,5 +1,5 @@
 use v6.d;
-use Encoding::Emacs::Ibm850;
+use Encoding::Emacs::Full::Ibm850;
 
 # Alias: cp850 -> ibm850
 class Encoding::Emacs::Cp850 is Encoding::Emacs::Ibm850 {

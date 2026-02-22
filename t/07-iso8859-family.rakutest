@@ -1,0 +1,198 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::Full::Iso_8859_2;
+use Encoding::Emacs::Full::Iso_8859_3;
+use Encoding::Emacs::Full::Iso_8859_4;
+use Encoding::Emacs::Full::Iso_8859_5;
+use Encoding::Emacs::Full::Iso_8859_7;
+use Encoding::Emacs::Full::Iso_8859_8;
+use Encoding::Emacs::Full::Iso_8859_9;
+use Encoding::Emacs::Full::Iso_8859_14;
+use Encoding::Emacs::Full::Iso_8859_15;
+
+plan 52;
+
+# ── ISO-8859-2 (Central European / Latin-2) ─────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_2.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-2', 'ISO-8859-2 name';
+
+    # ASCII range is identity-mapped
+    is $dec.decode(Blob.new(0x41)),        'A', '8859-2: ASCII A';
+    is $dec.decode(Blob.new(0x7A)),        'z', '8859-2: ASCII z';
+
+    # 0xE0 → 0x0155 (ŕ)
+    is $dec.decode(Blob.new(0xE0)).ord,    0x0155, '8859-2: 0xE0 = ŕ';
+    # 0xE4 → 0x00E4 (ä)
+    is $dec.decode(Blob.new(0xE4)).ord,    0x00E4, '8859-2: 0xE4 = ä';
+    # 0xE9 → 0x00E9 (é)
+    is $dec.decode(Blob.new(0xE9)).ord,    0x00E9, '8859-2: 0xE9 = é';
+
+    # Encode round-trip
+    my $text = "café";
+    my $encoded = $enc2.encode($text);
+    is $dec.decode($encoded), $text, '8859-2: round-trip café';
+}
+
+# ── ISO-8859-5 (Cyrillic) ────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name,        'iso-8859-5',     'ISO-8859-5 name';
+    is $enc.description, 'ISO/IEC 8859/5', 'ISO-8859-5 description';
+
+    # 0xA1 → U+0401 (Ё)
+    is $dec.decode(Blob.new(0xA1)).ord, 0x0401, '8859-5: 0xA1 = Ё';
+    # 0xEF → 0x040E + (0xEF - 0xAE) = 0x044F (я) — last Cyrillic lower
+    is $dec.decode(Blob.new(0xEF)).ord, 0x044F, '8859-5: 0xEF = я';
+    # 0xF0 → U+2116 (№)
+    is $dec.decode(Blob.new(0xF0)).ord, 0x2116, '8859-5: 0xF0 = №';
+    # 0xF1 → U+0451 (ё)
+    is $dec.decode(Blob.new(0xF1)).ord, 0x0451, '8859-5: 0xF1 = ё';
+    # 0xFD → U+00A7 (§)
+    is $dec.decode(Blob.new(0xFD)).ord, 0x00A7, '8859-5: 0xFD = §';
+
+    # Encode known Cyrillic characters
+    my $buf = $enc2.encode("Ё");
+    is $buf[0], 0xA1, '8859-5: Ё encodes to 0xA1';
+    $buf = $enc2.encode("я");
+    is $buf[0], 0xEF, '8859-5: я encodes to 0xEF';
+
+    # Round-trip Cyrillic phrase
+    my $text = "Привет";
+    is $dec.decode($enc2.encode($text)), $text, '8859-5: round-trip Привет';
+
+    # Alternative names
+    ok $enc.alternative-names.grep('cyrillic-iso8859-5'), '8859-5: has alias cyrillic-iso8859-5';
+}
+
+# ── ISO-8859-3 (South European) ─────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_3.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-3', 'ISO-8859-3 name';
+    is $dec.decode(Blob.new(0x41, 0x42)), 'AB', '8859-3: ASCII identity';
+    my $text = "Hello";
+    is $dec.decode($enc2.encode($text)), $text, '8859-3: round-trip Hello';
+}
+
+# ── ISO-8859-4 (North European) ─────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_4.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-4', 'ISO-8859-4 name';
+    is $dec.decode(Blob.new(0x41, 0x42)), 'AB', '8859-4: ASCII identity';
+    my $text = "Hello";
+    is $dec.decode($enc2.encode($text)), $text, '8859-4: round-trip Hello';
+}
+
+
+{
+    my $enc = Encoding::Emacs::Iso_8859_7.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-7', 'ISO-8859-7 name';
+
+    # 0xA4 → U+20AC (€)
+    is $dec.decode(Blob.new(0xA4)).ord, 0x20AC, '8859-7: 0xA4 = €';
+    # 0xB4 → U+0384 (Greek tonos ΄)
+    is $dec.decode(Blob.new(0xB4)).ord, 0x0384, '8859-7: 0xB4 = ΄';
+    # 0xC1 → U+0391 (Α)
+    is $dec.decode(Blob.new(0xC1)).ord, 0x0391, '8859-7: 0xC1 = Α';
+    # 0xE1 → 0x03B1 (α) — 0xBE=0x038E, offset: 0xE1-0xBE=35, 0x038E+35=0x03B1
+    is $dec.decode(Blob.new(0xE1)).ord, 0x03B1, '8859-7: 0xE1 = α';
+
+    # Round-trip Greek word
+    my $text = "αβγ";
+    is $dec.decode($enc2.encode($text)), $text, '8859-7: round-trip αβγ';
+}
+
+# ── ISO-8859-8 (Hebrew) ──────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_8.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-8', 'ISO-8859-8 name';
+
+    # 0xA2 → U+00A2 (¢)
+    is $dec.decode(Blob.new(0xA2)).ord, 0x00A2, '8859-8: 0xA2 = ¢';
+    # 0xAA → U+00D7 (×)
+    is $dec.decode(Blob.new(0xAA)).ord, 0x00D7, '8859-8: 0xAA = ×';
+    # 0xDF → U+2017 (double low line)
+    is $dec.decode(Blob.new(0xDF)).ord, 0x2017, '8859-8: 0xDF = ‗';
+    # 0xE0 → U+05D0 (Alef)
+    is $dec.decode(Blob.new(0xE0)).ord, 0x05D0, '8859-8: 0xE0 = א';
+    # 0xE1 → U+05D1 (Bet)
+    is $dec.decode(Blob.new(0xE1)).ord, 0x05D1, '8859-8: 0xE1 = ב';
+
+    # Round-trip Hebrew letters
+    my $alef-bet = $dec.decode(Blob.new(0xE0, 0xE1, 0xE2));
+    is $alef-bet, "אבג", '8859-8: decode אבג';
+
+    my $buf = $enc2.encode("אבג");
+    is $buf.list.join(','), '224,225,226', '8859-8: encode אבג';
+}
+
+# ── ISO-8859-9 (Turkish) ─────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_9.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'iso-8859-9', 'ISO-8859-9 name';
+    # ASCII identity
+    is $dec.decode(Blob.new(0x41, 0x42, 0x43)), 'ABC', '8859-9: ASCII identity';
+}
+
+# ── ISO-8859-14 (Celtic) ─────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_14.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'iso-8859-14', 'ISO-8859-14 name';
+    is $dec.decode(Blob.new(0x48, 0x69)), 'Hi', 'ISO-8859-14: ASCII identity';
+}
+
+# ── ISO-8859-15 (Latin-9, euro sign) ────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_15.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'iso-8859-15', 'ISO-8859-15 name';
+
+    # 0xA4 → U+20AC (€) — differs from ISO-8859-1 which had ¤
+    is $dec.decode(Blob.new(0xA4)).ord, 0x20AC, '8859-15: 0xA4 = €';
+    # 0xA6 → U+0160 (Š)
+    is $dec.decode(Blob.new(0xA6)).ord, 0x0160, '8859-15: 0xA6 = Š';
+    # 0xA8 → U+0161 (š)
+    is $dec.decode(Blob.new(0xA8)).ord, 0x0161, '8859-15: 0xA8 = š';
+    # 0xB4 → U+017D (Ž)
+    is $dec.decode(Blob.new(0xB4)).ord, 0x017D, '8859-15: 0xB4 = Ž';
+    # 0xB8 → U+017E (ž)
+    is $dec.decode(Blob.new(0xB8)).ord, 0x017E, '8859-15: 0xB8 = ž';
+    # 0xBC → U+0152 (Œ)
+    is $dec.decode(Blob.new(0xBC)).ord, 0x0152, '8859-15: 0xBC = Œ';
+    # 0xBD → U+0153 (œ)
+    is $dec.decode(Blob.new(0xBD)).ord, 0x0153, '8859-15: 0xBD = œ';
+    # 0xBE → U+0178 (Ÿ)
+    is $dec.decode(Blob.new(0xBE)).ord, 0x0178, '8859-15: 0xBE = Ÿ';
+
+    # Euro sign round-trip
+    my $price = "€100";
+    is $dec.decode($enc2.encode($price)), $price, '8859-15: round-trip €100';
+}
+
+done-testing;

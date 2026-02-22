@@ -1,0 +1,189 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::Full::Windows_1250;
+use Encoding::Emacs::Full::Windows_1251;
+use Encoding::Emacs::Full::Windows_1252;
+use Encoding::Emacs::Full::Windows_1253;
+use Encoding::Emacs::Full::Windows_1254;
+use Encoding::Emacs::Full::Windows_1255;
+use Encoding::Emacs::Full::Windows_1256;
+use Encoding::Emacs::Full::Windows_1257;
+use Encoding::Emacs::Full::Windows_1258;
+use Encoding::Emacs::Full::Cp1250;
+use Encoding::Emacs::Full::Cp1251;
+use Encoding::Emacs::Full::Cp1252;
+
+plan 47;
+
+# ── CP1250 / Windows-1250 (Central European) ────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp1250.new;
+    my $win = Encoding::Emacs::Windows_1250.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name,  'cp1250',       'CP1250 name';
+    is $win.name,  'windows-1250', 'Windows-1250 name';
+    ok $enc.is-ascii-compatible,   'CP1250 is ASCII compatible';
+
+    # 0x80 → U+20AC (€)
+    is $dec.decode(Blob.new(0x80)).ord, 0x20AC, 'CP1250: 0x80 = €';
+    # 0x8A → U+0160 (Š)
+    is $dec.decode(Blob.new(0x8A)).ord, 0x0160, 'CP1250: 0x8A = Š';
+    # 0x8E → U+017D (Ž)
+    is $dec.decode(Blob.new(0x8E)).ord, 0x017D, 'CP1250: 0x8E = Ž';
+    # 0xA3 → U+0141 (Ł)
+    is $dec.decode(Blob.new(0xA3)).ord, 0x0141, 'CP1250: 0xA3 = Ł';
+    # 0xC0 → U+0154 (Ŕ)
+    is $dec.decode(Blob.new(0xC0)).ord, 0x0154, 'CP1250: 0xC0 = Ŕ';
+    # 0xE9 → U+00E9 (é)
+    is $dec.decode(Blob.new(0xE9)).ord, 0x00E9, 'CP1250: 0xE9 = é';
+
+    # Encode/decode
+    my $buf = $enc2.encode("Š");
+    is $buf[0], 0x8A, 'CP1250: Š encodes to 0x8A';
+
+    # Round-trip
+    my $text = "Ząb";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1250: round-trip Ząb';
+}
+
+# ── CP1251 / Windows-1251 (Cyrillic) ────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp1251.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp1251', 'CP1251 name';
+
+    # 0x80 → U+0402 (Ђ)
+    is $dec.decode(Blob.new(0x80)).ord, 0x0402, 'CP1251: 0x80 = Ђ';
+    # 0x82 → U+201A (‚)
+    is $dec.decode(Blob.new(0x82)).ord, 0x201A, 'CP1251: 0x82 = ‚';
+    # 0x88 → U+20AC (€)
+    is $dec.decode(Blob.new(0x88)).ord, 0x20AC, 'CP1251: 0x88 = €';
+    # 0xA8 → U+0401 (Ё)
+    is $dec.decode(Blob.new(0xA8)).ord, 0x0401, 'CP1251: 0xA8 = Ё';
+    # 0xC0 → U+0410 (А) — start of Cyrillic block
+    is $dec.decode(Blob.new(0xC0)).ord, 0x0410, 'CP1251: 0xC0 = А';
+    # 0xFF → U+0410 + (0xFF - 0xC0) = 0x044F (я)
+    is $dec.decode(Blob.new(0xFF)).ord, 0x044F, 'CP1251: 0xFF = я';
+    # 0xB9 → U+2116 (№)
+    is $dec.decode(Blob.new(0xB9)).ord, 0x2116, 'CP1251: 0xB9 = №';
+
+    # Encode Cyrillic
+    my $buf = $enc2.encode("А");
+    is $buf[0], 0xC0, 'CP1251: А encodes to 0xC0';
+
+    # Round-trip Russian sentence
+    my $text = "Привет мир";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1251: round-trip Привет мир';
+}
+
+# ── CP1252 / Windows-1252 (Western European) ────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp1252.new;
+    my $win = Encoding::Emacs::Windows_1252.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name,  'cp1252',       'CP1252 name';
+    is $win.name,  'windows-1252', 'Windows-1252 name';
+    ok $win.is-ascii-compatible,   'Windows-1252 is ASCII compatible';
+
+    # 0x80 → U+20AC (€)
+    is $dec.decode(Blob.new(0x80)).ord, 0x20AC, 'CP1252: 0x80 = €';
+    # 0x9C → U+0153 (œ)
+    is $dec.decode(Blob.new(0x9C)).ord, 0x0153, 'CP1252: 0x9C = œ';
+    # 0xA0 → U+00A0 (NBSP) — identity offset from 0xA0
+    is $dec.decode(Blob.new(0xA0)).ord, 0x00A0, 'CP1252: 0xA0 = NBSP';
+    # 0xE9 → U+00E9 (é)
+    is $dec.decode(Blob.new(0xE9)).ord, 0x00E9, 'CP1252: 0xE9 = é';
+    # 0xFF → U+00FF (ÿ)
+    is $dec.decode(Blob.new(0xFF)).ord, 0x00FF, 'CP1252: 0xFF = ÿ';
+
+    # Encode/decode
+    my $buf = $enc2.encode("€");
+    is $buf[0], 0x80, 'CP1252: € encodes to 0x80';
+
+    # Round-trip French
+    my $text = "Café résumé";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1252: round-trip Café résumé';
+}
+
+# ── Windows-1253 (Greek) ─────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1253.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'windows-1253', 'Windows-1253 name';
+
+    # 0x80 → U+20AC (€)
+    is $dec.decode(Blob.new(0x80)).ord, 0x20AC, 'CP1253: 0x80 = €';
+    # 0xA1 → U+0385 (Greek dialytika tonos)
+    is $dec.decode(Blob.new(0xA1)).ord, 0x0385, 'CP1253: 0xA1 = ΅';
+
+    # Round-trip Greek
+    my $text = "Αβγ";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1253: round-trip Αβγ';
+}
+
+# ── Windows-1254 (Turkish) ───────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1254.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'windows-1254', 'Windows-1254 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP1254: ASCII A';
+
+    # Round-trip
+    my $text = "İstanbul";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1254: round-trip İstanbul';
+}
+
+# ── Windows-1255 (Hebrew) ────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1255.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'windows-1255', 'Windows-1255 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP1255: ASCII A';
+}
+
+# ── Windows-1256 (Arabic) ────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1256.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'windows-1256', 'Windows-1256 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP1256: ASCII A';
+}
+
+# ── Windows-1257 (Baltic) ────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1257.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'windows-1257', 'Windows-1257 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP1257: ASCII A';
+
+    # Round-trip
+    my $text = "Āēīū";
+    is $dec.decode($enc2.encode($text)), $text, 'CP1257: round-trip Āēīū';
+}
+
+# ── Windows-1258 (Vietnamese) ────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1258.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'windows-1258', 'Windows-1258 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP1258: ASCII A';
+}
+
+done-testing;

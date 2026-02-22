@@ -36,8 +36,8 @@ my $tester = CP850Test.new;
     my $box = $tester.decode-cp850(Blob.new(0xB3));
     is $box, '│', 'Decode box drawing character';
     
-    # Test accented character (0x9D = ¢)
-    my $cent = $tester.decode-cp850(Blob.new(0x9D));
+    # Test cent sign (0xBD = ¢)
+    my $cent = $tester.decode-cp850(Blob.new(0xBD));
     is $cent, '¢', 'Decode cent sign';
 }
 
@@ -48,7 +48,7 @@ my $tester = CP850Test.new;
     is $encoded[0], 0x48, 'First byte correct';
     
     my $cent-encoded = $tester.encode-cp850('¢');
-    is $cent-encoded[0], 0x9D, 'Cent sign encoded correctly';
+    is $cent-encoded[0], 0xBD, 'Cent sign encoded correctly';
 }
 
 # Test 7-8: Round trip

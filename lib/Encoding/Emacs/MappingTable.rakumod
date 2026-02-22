@@ -73,15 +73,39 @@ class MappingTable is export {
 # Cache for loaded mapping tables
 my %mapping-cache;
 
+sub find-installed-map(Str $map-file --> IO::Path) {
+    # Look up the map file in the installed distribution's resources
+    my $rel-key = "resources/emacs-src/charsets/$map-file.map";
+    for <home site vendor> -> $repo-name {
+        my $repo = CompUnit::RepositoryRegistry.repository-for-name($repo-name);
+        next unless $repo.can("installed");
+        for $repo.installed() -> $dist {
+            next unless ($dist.meta<name> // '') eq "Encoding::Emacs";
+            my $files = $dist.meta<files>;
+            next unless ($files{$rel-key}:exists);
+            my $hash = $files{$rel-key};
+            my $path = $repo.prefix.child("resources/$hash");
+            return $path if $path.e;
+        }
+    }
+    return IO::Path;
+}
+
 sub load-mapping-table(Str $map-file, Str $charsets-dir = 'emacs-src/charsets') is export {
     my $key = $map-file;
     return %mapping-cache{$key} if %mapping-cache{$key}:exists;
-    
+
     my $filename = "$charsets-dir/$map-file.map";
     unless $filename.IO.e {
-        die "Mapping file not found: $filename";
+        # Fall back to installed resources when running outside the source tree
+        my $installed = find-installed-map($map-file);
+        if $installed.defined && $installed.e {
+            $filename = $installed.absolute;
+        } else {
+            die "Mapping file not found: $filename";
+        }
     }
-    
+
     my $table = MappingTable.new.load-from-file($filename);
     %mapping-cache{$key} = $table;
     return $table;

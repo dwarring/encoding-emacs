@@ -1,0 +1,100 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::MappingTable;
+
+plan 18;
+
+# ── Cache returns same object for same map file ───────────────────────────────
+{
+    my $t1 = load-mapping-table('KOI8-R', 'emacs-src/charsets');
+    my $t2 = load-mapping-table('KOI8-R', 'emacs-src/charsets');
+
+    # Both should be the same cached object
+    ok $t1.WHICH eq $t2.WHICH, 'Same map file returns cached object';
+
+    # Verify they give identical results
+    is $t1.decode-byte(0xC1), $t2.decode-byte(0xC1),
+        'Cached and fresh object give same decode result';
+}
+
+# ── Different map files return different objects ───────────────────────────────
+{
+    my $t1 = load-mapping-table('KOI8-R',  'emacs-src/charsets');
+    my $t2 = load-mapping-table('IBM850', 'emacs-src/charsets');
+
+    ok $t1.WHICH ne $t2.WHICH, 'Different map files return different objects';
+}
+
+# ── Cache survives repeated access under load ─────────────────────────────────
+{
+    # Load the same table 20 times — all should be identical
+    my @tables = (^20).map: { load-mapping-table('8859-5', 'emacs-src/charsets') };
+    my $first = @tables[0].WHICH;
+    my $all-same = @tables.grep({ $_.WHICH ne $first }).elems == 0;
+    ok $all-same, 'All 20 loads return the same cached object';
+}
+
+# ── Cache works across multiple distinct map files ────────────────────────────
+{
+    my @names = <KOI8-R IBM850 8859-5 CP1252 MACINTOSH>;
+    my %first;
+
+    # Load each twice, verify same object both times
+    for @names -> $name {
+        %first{$name} = load-mapping-table($name, 'emacs-src/charsets').WHICH;
+    }
+    for @names -> $name {
+        my $second = load-mapping-table($name, 'emacs-src/charsets').WHICH;
+        is $second, %first{$name}, "$name: second load returns cached object";
+    }
+}
+
+# ── Missing map file throws descriptive error ─────────────────────────────────
+{
+    dies-ok {
+        load-mapping-table('NONEXISTENT-ENCODING', 'emacs-src/charsets');
+    }, 'Loading nonexistent map file throws error';
+
+    my $error-msg = do {
+        try { load-mapping-table('NONEXISTENT-ENCODING', 'emacs-src/charsets') };
+        $!.message;
+    };
+    like $error-msg, /Mapping.file.not.found/, 'Error message mentions "Mapping file not found"';
+}
+
+# ── decode-bytes on large buffer is consistent ────────────────────────────────
+{
+    my $table = load-mapping-table('KOI8-R', 'emacs-src/charsets');
+
+    # Decode 256-byte sequence (all possible bytes)
+    my $all-bytes = Blob.new(0..255);
+    my $result1 = $table.decode-bytes($all-bytes);
+    my $result2 = $table.decode-bytes($all-bytes);
+    is $result1, $result2, 'decode-bytes is deterministic for same input';
+    is $result1.chars, 256, 'decode-bytes produces one char per byte';
+}
+
+# ── encode-string with replacement for mixed ASCII + unmappable ───────────────
+{
+    my $table = load-mapping-table('8859-5', 'emacs-src/charsets');
+
+    # Mix of mappable (А = 0xAE+0 = 0xAE? let's use ASCII) and unmappable (🎉)
+    my $mixed = "A🎉B";
+    my $encoded = $table.encode-string($mixed, :replacement('?'));
+    is $encoded.elems, 3, 'Mixed string: 3 bytes (A, ?, B)';
+    is $encoded[0], 0x41, 'Mixed: A → 0x41';
+    is $encoded[1], 0x3F, 'Mixed: 🎉 → ? (0x3F)';
+    is $encoded[2], 0x42, 'Mixed: B → 0x42';
+}
+
+# ── can-encode covers all ASCII ───────────────────────────────────────────────
+{
+    my $table = load-mapping-table('KOI8-R', 'emacs-src/charsets');
+
+    my $all-ascii-encodable = (0x20..0x7E).all.map({ $table.can-encode($_) });
+    ok so $all-ascii-encodable, 'All printable ASCII chars can be encoded in KOI8-R';
+}
+
+done-testing;

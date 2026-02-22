@@ -1,0 +1,169 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::MappingTable;
+use Encoding::Emacs::Full::Iso_8859_5;
+use Encoding::Emacs::Full::Cp850;
+use Encoding::Emacs::Full::Koi8_R;
+use Encoding::Emacs::Full::Windows_1252;
+
+plan 31;
+
+# ── Boundary: byte 0x00 ──────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $dec = $enc.decoder;
+
+    my $result = $dec.decode(Blob.new(0x00));
+    is $result.ord, 0x00, 'Null byte (0x00) decodes correctly';
+}
+
+# ── Boundary: byte 0x7F ──────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_R.new;
+    my $dec = $enc.decoder;
+
+    my $result = $dec.decode(Blob.new(0x7F));
+    is $result.ord, 0x7F, 'DEL byte (0x7F) decodes correctly in KOI8-R';
+}
+
+# ── Boundary: byte 0xFF ──────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_R.new;
+    my $dec = $enc.decoder;
+
+    my $result = $dec.decode(Blob.new(0xFF));
+    is $result.ord, 0x042A, 'Last byte (0xFF) decodes in KOI8-R';
+}
+
+# ── Empty blob decodes to empty string ───────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $dec = $enc.decoder;
+
+    my $result = $dec.decode(Blob.new());
+    is $result, '', 'Empty Blob decodes to empty string';
+}
+
+# ── Empty string encodes to empty Blob ───────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $enc2 = $enc.encoder;
+
+    my $result = $enc2.encode('');
+    is $result.elems, 0, 'Empty string encodes to empty Blob';
+}
+
+# ── Single char encode/decode ─────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_R.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    for ('A', 0x41), ('а', 0xC1), ('А', 0xE1), ('ю', 0xC0) -> ($char, $byte) {
+        my $buf = $enc2.encode($char);
+        is $buf[0], $byte, "KOI8-R: '$char' encodes to 0x{$byte.fmt('%02X')}";
+        is $dec.decode(Blob.new($byte)), $char, "KOI8-R: 0x{$byte.fmt('%02X')} decodes to '$char'";
+    }
+}
+
+# ── Unmappable character uses replacement ────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $enc2 = $enc.encoder;
+
+    # 🎉 emoji (U+1F389) cannot be encoded in ISO-8859-5
+    my $buf = $enc2.encode("🎉", :replacement('?'));
+    is $buf[0], 0x3F, 'Unmappable char replaced with ? (0x3F)';
+}
+
+# ── Default replacement is '?' ────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Windows_1252.new;
+    my $enc2 = $enc.encoder;
+
+    # Ω (U+03A9) not in CP1252 — default replacement
+    my $buf = $enc2.encode("Ω");
+    is $buf[0], 0x3F, 'CP1252: unmappable Ω defaults to ? replacement';
+}
+
+# ── Long buffer decode ────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Koi8_R.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    my $text = "Hello Привет мир! " x 100;
+    my $encoded = $enc2.encode($text);
+    my $decoded = $dec.decode($encoded);
+    is $decoded, $text, 'Long buffer (1800 chars) round-trip OK';
+}
+
+# ── Multi-byte decode produces correct char count ─────────────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+    my $dec = $enc.decoder;
+
+    # 5 bytes → 5 characters
+    my $result = $dec.decode(Blob.new(0x41, 0xA1, 0xEF, 0xF0, 0x42));
+    is $result.chars, 5, 'Decode 5 bytes → 5 characters';
+    is $result.substr(0,1), 'A',  'First char: A';
+    is $result.substr(1,1).ord, 0x0401, 'Second char: Ё (U+0401)';
+    is $result.substr(4,1), 'B',  'Last char: B';
+}
+
+# ── Caching: same mapping object returned on second call ─────────────────────
+{
+    my $enc = Encoding::Emacs::Iso_8859_5.new;
+
+    # Get two decoders — both should work correctly (mapping cached internally)
+    my $dec1 = $enc.decoder;
+    my $dec2 = $enc.decoder;
+
+    my $r1 = $dec1.decode(Blob.new(0xA1));
+    my $r2 = $dec2.decode(Blob.new(0xA1));
+    is $r1, $r2, 'Two decoders return identical results (cache consistent)';
+}
+
+# ── Two separate instances share mapping cache ────────────────────────────────
+{
+    my $a = Encoding::Emacs::Koi8_R.new;
+    my $b = Encoding::Emacs::Koi8_R.new;
+
+    my $ra = $a.decoder.decode(Blob.new(0xC1));
+    my $rb = $b.decoder.decode(Blob.new(0xC1));
+    is $ra, $rb, 'Separate instances decode identically (shared class-level cache)';
+}
+
+# ── MappingTable: unknown byte falls back to identity ────────────────────────
+{
+    # CP1250: byte 0x81 is not defined in the map — should fall back to 0x81
+    my $enc = load-mapping-table('CP1250', 'emacs-src/charsets');
+    my $result = $enc.decode-byte(0x81);
+    # 0x81 not present → identity fallback returns 0x81
+    is $result, 0x81, 'MappingTable: undefined byte falls back to identity';
+}
+
+# ── MappingTable: can-encode returns False for unmapped codepoint ─────────────
+{
+    my $table = load-mapping-table('8859-5', 'emacs-src/charsets');
+    ok !$table.can-encode(0x1F389), 'can-encode: 🎉 (U+1F389) not in ISO-8859-5';
+    ok  $table.can-encode(0x0401),  'can-encode: Ё (U+0401) is in ISO-8859-5';
+}
+
+# ── Encode then decode preserves byte values ──────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp850.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    my @test-chars = 'A', 'é', 'ü', 'Ø', '¢', '│';
+    for @test-chars -> $ch {
+        my $encoded = $enc2.encode($ch);
+        my $decoded = $dec.decode($encoded);
+        is $decoded, $ch, "CP850: '$ch' survives encode→decode";
+    }
+}
+
+done-testing;

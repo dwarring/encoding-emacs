@@ -1,0 +1,197 @@
+use v6.d;
+use Test;
+use lib 'lib';
+
+use Encoding::Emacs::Full::Cp437;
+use Encoding::Emacs::Full::Cp850;
+use Encoding::Emacs::Full::Cp852;
+use Encoding::Emacs::Full::Cp855;
+use Encoding::Emacs::Full::Cp860;
+use Encoding::Emacs::Full::Cp861;
+use Encoding::Emacs::Full::Cp862;
+use Encoding::Emacs::Full::Cp863;
+use Encoding::Emacs::Full::Cp865;
+use Encoding::Emacs::Full::Cp866;
+use Encoding::Emacs::Full::Ibm850;
+use Encoding::Emacs::Full::Ibm866;
+
+plan 46;
+
+# ── CP437 (Original IBM PC) ──────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp437.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp437', 'CP437 name';
+    ok $enc.is-ascii-compatible, 'CP437 is ASCII compatible';
+
+    # ASCII identity
+    is $dec.decode(Blob.new(0x48, 0x69)), 'Hi', 'CP437: ASCII Hi';
+
+    # 0x80 → U+00C7 (Ç)
+    is $dec.decode(Blob.new(0x80)).ord, 0x00C7, 'CP437: 0x80 = Ç';
+    # 0x81 → U+00FC (ü)
+    is $dec.decode(Blob.new(0x81)).ord, 0x00FC, 'CP437: 0x81 = ü';
+    # 0x82 → U+00E9 (é)
+    is $dec.decode(Blob.new(0x82)).ord, 0x00E9, 'CP437: 0x82 = é';
+    # 0x87 → U+00E7 (ç)
+    is $dec.decode(Blob.new(0x87)).ord, 0x00E7, 'CP437: 0x87 = ç';
+
+    # Encode
+    my $buf = $enc2.encode("ü");
+    is $buf[0], 0x81, 'CP437: ü encodes to 0x81';
+
+    # Round-trip
+    my $text = "Çüé";
+    is $dec.decode($enc2.encode($text)), $text, 'CP437: round-trip Çüé';
+}
+
+# ── CP850 / IBM850 (Western European DOS) ───────────────────────────────────
+{
+    my $cp = Encoding::Emacs::Cp850.new;
+    my $ibm = Encoding::Emacs::Ibm850.new;
+    my $dec = $ibm.decoder;
+    my $enc2 = $ibm.encoder;
+
+    is $cp.name,  'cp850',  'CP850 name';
+    is $ibm.name, 'ibm850', 'IBM850 name';
+
+    # ASCII identity
+    is $dec.decode(Blob.new(0x41, 0x42, 0x43)), 'ABC', 'CP850: ASCII ABC';
+
+    # 0x9B → U+00F8 (ø)
+    is $dec.decode(Blob.new(0x9B)).ord, 0x00F8, 'CP850: 0x9B = ø';
+    # 0x9C → U+00A3 (£)
+    is $dec.decode(Blob.new(0x9C)).ord, 0x00A3, 'CP850: 0x9C = £';
+    # 0x9D → U+00D8 (Ø)
+    is $dec.decode(Blob.new(0x9D)).ord, 0x00D8, 'CP850: 0x9D = Ø';
+    # 0xBD → U+00A2 (¢)
+    is $dec.decode(Blob.new(0xBD)).ord, 0x00A2, 'CP850: 0xBD = ¢';
+    # 0xB3 → U+2502 (│ box drawing vertical)
+    is $dec.decode(Blob.new(0xB3)).ord, 0x2502, 'CP850: 0xB3 = │';
+
+    # Encode
+    my $buf = $enc2.encode("Ø");
+    is $buf[0], 0x9D, 'CP850: Ø encodes to 0x9D';
+    $buf = $enc2.encode("¢");
+    is $buf[0], 0xBD, 'CP850: ¢ encodes to 0xBD';
+
+    # Round-trip with extended chars
+    my $text = "Grüß Gott";
+    is $dec.decode($enc2.encode($text)), $text, 'CP850: round-trip Grüß Gott';
+}
+
+# ── CP852 (Central European DOS) ─────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp852.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp852', 'CP852 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP852: ASCII A';
+
+    # Round-trip
+    my $text = "Žluč";
+    is $dec.decode($enc2.encode($text)), $text, 'CP852: round-trip Žluč';
+}
+
+# ── CP855 (Russian DOS) ───────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp855.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp855', 'CP855 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP855: ASCII A';
+
+    # Round-trip Cyrillic
+    my $text = "Привет";
+    is $dec.decode($enc2.encode($text)), $text, 'CP855: round-trip Привет';
+}
+
+# ── CP860 (Portuguese DOS) ───────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp860.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp860', 'CP860 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP860: ASCII A';
+
+    # Round-trip
+    my $text = "café";
+    is $dec.decode($enc2.encode($text)), $text, 'CP860: round-trip café';
+}
+
+# ── CP861 (Icelandic DOS) ─────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp861.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'cp861', 'CP861 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP861: ASCII A';
+}
+
+# ── CP862 (Hebrew DOS) ────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp862.new;
+    my $dec = $enc.decoder;
+    my $enc2 = $enc.encoder;
+
+    is $enc.name, 'cp862', 'CP862 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP862: ASCII A';
+
+    # Round-trip Hebrew letters
+    my $text = "שלום";
+    is $dec.decode($enc2.encode($text)), $text, 'CP862: round-trip שלום';
+}
+
+# ── CP863 (Canadian French DOS) ──────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp863.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'cp863', 'CP863 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP863: ASCII A';
+}
+
+# ── CP865 (Nordic DOS) ────────────────────────────────────────────────────────
+{
+    my $enc = Encoding::Emacs::Cp865.new;
+    my $dec = $enc.decoder;
+
+    is $enc.name, 'cp865', 'CP865 name';
+    is $dec.decode(Blob.new(0x41)), 'A', 'CP865: ASCII A';
+}
+
+# ── CP866 / IBM866 (Russian DOS) ─────────────────────────────────────────────
+{
+    my $cp = Encoding::Emacs::Cp866.new;
+    my $ibm = Encoding::Emacs::Ibm866.new;
+    my $dec = $cp.decoder;
+    my $enc2 = $cp.encoder;
+
+    is $cp.name,  'cp866',  'CP866 name';
+    is $ibm.name, 'ibm866', 'IBM866 name';
+
+    # 0x80 → U+0410 (А) — Cyrillic А
+    is $dec.decode(Blob.new(0x80)).ord, 0x0410, 'CP866: 0x80 = А';
+    # 0x80-0xAF → 0x0410-0x043F (А-п)
+    # 0x81 → U+0411 (Б)
+    is $dec.decode(Blob.new(0x81)).ord, 0x0411, 'CP866: 0x81 = Б';
+    # 0xAF → U+0410 + (0xAF - 0x80) = 0x043F (п)
+    is $dec.decode(Blob.new(0xAF)).ord, 0x043F, 'CP866: 0xAF = п';
+    # 0xB3 → U+2502 (│)
+    is $dec.decode(Blob.new(0xB3)).ord, 0x2502, 'CP866: 0xB3 = │';
+
+    # Encode
+    my $buf = $enc2.encode("А");
+    is $buf[0], 0x80, 'CP866: А encodes to 0x80';
+
+    # Round-trip Russian
+    my $text = "Привет мир!";
+    is $dec.decode($enc2.encode($text)), $text, 'CP866: round-trip Привет мир!';
+}
+
+done-testing;

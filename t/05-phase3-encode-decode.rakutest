@@ -2,20 +2,18 @@ use v6.d;
 use Test;
 use lib 'lib';
 
-# Use pre-generated test modules
-use Encoding::Emacs::TestPhase3::Iso_8859_5;
-use Encoding::Emacs::TestPhase3::Windows_1252;
+use Encoding::Emacs::Full::Iso_8859_5;
+use Encoding::Emacs::Full::Windows_1252;
 
 plan 15;
 
 # Test 1-3: ISO-8859-5 (Cyrillic)
 {
     my $enc = Encoding::Emacs::Iso_8859_5.new;
-    
+
     ok $enc, 'ISO-8859-5 object created';
     is $enc.name, 'iso-8859-5', 'ISO-8859-5 name correct';
-    
-    # Test decoding
+
     my $dec = $enc.decoder;
     my $bytes = Blob.new(0x41, 0xA1, 0x42); # A, Cyrillic Ё, B
     my $decoded = $dec.decode($bytes);
@@ -25,8 +23,7 @@ plan 15;
 # Test 4-6: ISO-8859-5 encoding
 {
     my $enc = Encoding::Emacs::Iso_8859_5.new;
-    
-    # Test encoding
+
     my $encoder = $enc.encoder;
     my $encoded = $encoder.encode('AЁB');
     is $encoded.elems, 3, 'Encoded to 3 bytes';
@@ -37,7 +34,7 @@ plan 15;
 # Test 7-9: Windows-1252
 {
     my $enc = Encoding::Emacs::Windows_1252.new;
-    
+
     ok $enc, 'Windows-1252 object created';
     is $enc.name, 'windows-1252', 'Windows-1252 name correct';
     ok $enc.is-ascii-compatible, 'Windows-1252 is ASCII compatible';
@@ -46,15 +43,14 @@ plan 15;
 # Test 10-12: Round-trip test
 {
     my $enc = Encoding::Emacs::Iso_8859_5.new;
-    
-    my $original = 'Hello Мир'; # "Hello World" with Cyrillic
+
+    my $original = 'Hello Мир';
     my $encoder = $enc.encoder;
     my $decoder = $enc.decoder;
-    
+
     my $encoded = $encoder.encode($original, :replacement('?'));
     my $decoded = $decoder.decode($encoded);
-    
-    # May not be exact due to character set limits
+
     ok $encoded, 'Encoding produces output';
     ok $decoded, 'Decoding produces output';
     like $decoded, /Hello/, 'Contains ASCII part';
@@ -63,7 +59,7 @@ plan 15;
 # Test 13-15: Alternative names and metadata
 {
     my $enc = Encoding::Emacs::Iso_8859_5.new;
-    
+
     my @alt = $enc.alternative-names;
     ok @alt.elems > 0, 'Has alternative names';
     ok @alt.grep('cyrillic-iso8859-5'), 'Contains expected alias';
